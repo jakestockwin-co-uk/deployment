@@ -15,4 +15,5 @@ var routes = {
 exports = module.exports = function (app) {
 	// Views
 	app.get('/', routes.views.index);
+  app.post('/deploy', routes.views.deploy);
 };
