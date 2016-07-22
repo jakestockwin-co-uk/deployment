@@ -29,6 +29,7 @@ keystone.set('locals', {
 });
 keystone.set('routes', require('./routes'));
 keystone.set('nav', {
+	deployment: ['sites', 'servers', 'environment-variables'],
 	users: 'users',
 });
 
