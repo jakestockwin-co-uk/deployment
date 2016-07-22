@@ -19,6 +19,7 @@ keystone.init({
 	'session': true,
 	'auth': true,
 	'user model': 'User',
+	'model prefix': 'deployment',
 });
 keystone.import('models');
 keystone.set('locals', {

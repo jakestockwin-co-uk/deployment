@@ -33,6 +33,7 @@ Site.add({
 	deployed: { type: Types.Boolean },
 });
 
+// TODO: We should add some custom validation that checks that no two environment variables are setting the same key. 
 // TODO: Add a pre-save hook which should deploy the site.
 
 /**
