@@ -25,6 +25,11 @@ Site.add({
 		ref: 'EnvironmentVariable',
 		many: true,
 	},
+	servers: {
+		type: Types.Relationship,
+		ref: 'Server',
+		many: true,
+	},
 	deployed: { type: Types.Boolean },
 });
 
