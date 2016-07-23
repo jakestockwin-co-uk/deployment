@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+host=$1
+shift
+script=$1
+shift
+ssh $host "cd ~/deployment; bash -s" -- <$script $@
