@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+host=$1
+shift
+filename=$1
+shift
+ssh $host "cd ~/deployment; tee $filename > /dev/null"
+# Send file contents to stdin
+
+# For testing locally instead of over ssh
+#cd ~/Development/deploymentTest
+#tee $filename > /dev/null

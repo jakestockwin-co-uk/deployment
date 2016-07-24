@@ -15,7 +15,7 @@ git checkout $appCommit || {
 	echo "Commit does not exist"
 	git checkout $currentCommit
 	forever --minUptime="${uptime}000" start keystone.js > /dev/null
-	return 1
+	exit 1
 }
 
 npm install > /dev/null
@@ -24,7 +24,7 @@ sleep $uptime # Give keystone time to get up and running or fail
 if nc -z localhost $PORT
 then
 	echo "Running successfully"
-	return 0
+	exit 0
 else # Travis should prevent this situation, but let's handle it anyway.
 	echo "Failed to start server"
 	forever stop keystone.js > /dev/null # Just in case
@@ -37,20 +37,20 @@ else # Travis should prevent this situation, but let's handle it anyway.
 		if nc -z localhost $PORT
 		then
 			echo "Previous version back up"
-			return 2
+			exit 2
 		else
 			echo "Previous version also failed"
 			echo "Giving up..."
-			return 3
+			exit 3
 		fi
 	else
-		echo "Failed is first commit tried"
+		echo "Failed on first commit tried"
 		echo "Giving up..."
-		return 4
+		exit 4
 	fi
 fi
 
-# Return codes:
+# Exit codes:
 # 	0 - success
 # 	1 - no commit
 # 	2 - failed, but successfully reverted to previous
