@@ -30,7 +30,11 @@ Site.add({
 		ref: 'Server',
 		many: true,
 	},
-	deployed: { type: Types.Boolean },
+	undeployedServers: {
+		type: Types.Relationship,
+		ref: 'Server',
+		many: true,
+	}
 });
 
 // TODO: We should add some custom validation that checks that no two environment variables are setting the same key. 
