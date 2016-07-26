@@ -1,80 +1,83 @@
 var keystone = require('keystone');
 var child_process = require('child_process');
 
-var appServers = [];
-var serversToDeploy = [];
-var vars = [];
-var siteName = '';
-var repo = '';
-var port = 0;
-
 exports = module.exports = function (req, res) {
-	addResult('User is ' + req.user, res);
-  // Probably use a Project model to keep track of these?
+	addInfo('User is ' + req.user, res);
 	var Site = keystone.list('Site');
-	Site.model.findOne().populate('servers undeployedServers environmentVariables').where('githubRepository', req.body.project).exec(function (err, site) {
-		if (err) {
-			console.log(err);
-		} else {
-			siteName = site.name;
-			appServers = site.servers;
-			serversToDeploy = site.undeployedServers;
-			repo = site.githubRepository;
-			vars = site.environmentVariables;
-			port = site.port;
-			site.undeployedServers = []; // TODO: We should remove servers based on the success of initSiteOnServer, not indiscriminately.
-			site.save();
-		}
-	}).then(function () {
-		addResult('Initalising on ' + serversToDeploy.length.toString() + ' application servers.', res);
-		var i;
-		var server;
-		var results;
-		for (i = 0; i < serversToDeploy.length; i++) {
-			server = appServers[i];
-			addResult('Initialising on ' + server.hostname, res);
-			results = initSiteOnServer(server, siteName, repo);
-			addResult(results.stdout.toString(), res);
-			addResult('Writing to .env file', res);
-			writeEnv(server, siteName, vars);
-			addResult('Done', res);
-		}
-		addResult('Deploying to ' + appServers.length.toString() + ' application servers.', res);
-		for (i = 0; i < appServers.length; i++) {
-			server = appServers[i];
-			addResult('Deploying to ' + server.hostname, res);
-			results = updateSite(server, siteName, req.body.commit); // TODO: We'll want to update the commit field of the site according to the result of this.
-			// results.status is 0 for success or 1,2,3,4 for different errors (see script), we'll probably want to be using that.
-			addResult(results.stdout.toString(), res);
-		}
-		finish(res);
+	Site.model.findOne().populate('servers deployedServers environmentVariables').where('githubRepository', req.body.project).exec().then(function (site) {
+		// Initialise on new servers
+		let undeployedServers = site.servers.filter(
+			(server) => !site.deployedServers.some(
+				(deployed) => server._id.toString() === deployed._id.toString()
+			)
+		); // This is not as elegant as I'd hoped. Might want to do it a different way?
+		addInfo('Initalising on ' + undeployedServers.length.toString() + ' application servers.', res);
+		initCallback(site, undeployedServers, req.body.commit, res);
 	});
 };
+
+function initCallback (site, servers, commit, res) {
+	if (servers.length > 0) {
+		var server = servers.shift(); // Pull first element out of the array. This allows us to iterate over the array by recursion
+		addInfo('Initialising on ' + server.hostname, res);
+		var child = initSiteOnServer(server, site.name, site.githubRepository);
+		child.stdout.on('data', (chunk) => { res.write(chunk); });
+		child.on('exit', (status) => {
+			// TODO: Handle failure status
+			addInfo('Writing .env to ' + server.hostname, res);
+			var child = writeEnv(server, site.name, site.environmentVariables, site.port);
+			child.stdout.on('data', (chunk) => { res.write(chunk); });
+			child.on('exit', (status) => {
+				// Handle failure status
+				site.deployedServers.push(server);
+				site.save();
+				initCallback(site, servers, commit, res);
+			});
+		});
+	} else {
+		// Update on all existing servers
+		let stillToUpdate = site.deployedServers.slice(); // Shallow-copy the array because we don't want to edit the proper version
+		addInfo('Deploying update to ' + stillToUpdate.length.toString() + ' application servers.', res);
+		updateCallback(site, stillToUpdate, commit, res);
+	}
+}
+
+function updateCallback (site, servers, commit, res) {
+	if (servers.length > 0) {
+		var server = servers.shift();
+		addInfo('Deploying to ' + server.hostname, res);
+		var child = updateSite(server, site.name, commit);
+		child.stdout.on('data', (chunk) => { res.write(chunk); });
+		child.on('exit', (status) => { updateCallback(site, servers, commit, res); });
+	} else {
+		site.save();
+		res.end('\n');
+	}
+}
 
 function initSiteOnServer (server, siteName, repo) {
 	var command = './run-remote';
 	var args = [server.hostname, 'deploy-new-app.sh', siteName, repo]; // For these we might want to stick a user@ string onto the start of the host string.
-	return child_process.spawnSync(command, args); // Can we make this async nicely, I wonder? Don't want the servers all updating at once is the issue.
+	return child_process.spawn(command, args);
 }
 
-function writeEnv (server, siteName, vars) {
+function writeEnv (server, siteName, vars, port) {
 	var command = './write-remote-file';
 	var fileContents = vars.map((varObject) => varObject.key + '=' + varObject.value).concat('PORT=' + port.toString()).reduce((last, current) => last + '\n' + current);
 	var args = [server.hostname, siteName + '/.env'];
-	return child_process.spawnSync(command, args, { input: fileContents });
+	var child = child_process.spawn(command, args);
+	child.stdin.write(fileContents);
+	child.stdin.end();
+	return child;
 }
 
 function updateSite (server, siteName, commit) {
 	var command = './run-remote';
 	var args = [server.hostname, 'deploy-app-update.sh', siteName, commit];
-	return child_process.spawnSync(command, args);
+	return child_process.spawn(command, args);
 }
 
-function addResult (result, res) {
+function addInfo (result, res) {
 	res.write(result);
 	res.write('\n');
-}
-
-function finish (res) {
-	res.end();
 }

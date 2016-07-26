@@ -30,7 +30,7 @@ Site.add({
 		ref: 'Server',
 		many: true,
 	},
-	undeployedServers: {
+	deployedServers: {
 		type: Types.Relationship,
 		ref: 'Server',
 		many: true,
