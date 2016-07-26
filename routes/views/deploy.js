@@ -2,7 +2,16 @@ var keystone = require('keystone');
 var child_process = require('child_process');
 
 exports = module.exports = function (req, res) {
-	addInfo('User is ' + req.user, res);
+	if (!req.user) {
+		addInfo('Not logged in. Please provide uid cookie or log in to deploy versions', res);
+		res.end();
+		return;
+	}
+	if (!req.user.canDeploy) {
+		addInfo('User not authorised to deploy new app versions', res);
+		res.end();
+		return;
+	}
 	var Site = keystone.list('Site');
 	Site.model.findOne().populate('servers deployedServers environmentVariables').where('githubRepository', req.body.project).exec().then(function (site) {
 		// Initialise on new servers
