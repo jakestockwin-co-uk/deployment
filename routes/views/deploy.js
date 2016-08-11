@@ -44,13 +44,15 @@ function initCallback (allDeployments, newDeployments, commit, res) {
 		child.on('exit', (status) => {
 			// TODO: Handle failure status
 			addInfo('Writing .env to ' + server.hostname, res);
-			var child = writeEnv(server, site.name, site.environmentVariables, site.port);
-			child.stdout.on('data', (chunk) => { res.write(chunk); });
-			child.on('exit', (status) => {
-				// Handle failure status
-				currentDeploy.initialised = true;
-				currentDeploy.save();
-				initCallback(allDeployments, newDeployments, commit, res);
+			site.populate('environmentVariables', function () {
+				var child = writeEnv(server, site.name, site.environmentVariables, site.port);
+				child.stdout.on('data', (chunk) => { res.write(chunk); });
+				child.on('exit', (status) => {
+					// Handle failure status
+					currentDeploy.initialised = true;
+					currentDeploy.save();
+					initCallback(allDeployments, newDeployments, commit, res);
+				});
 			});
 		});
 	} else {
