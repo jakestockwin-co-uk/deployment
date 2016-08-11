@@ -13,6 +13,8 @@ Server.add({
 	hostname: { type: String, initial: true, required: true, index: true },
 });
 
+Server.relationship({ path: 'deploys', ref: 'Deployment', refPath: 'server' });
+
 // TODO: Verify that keystone can connect to the given server before saving.
 
 /**

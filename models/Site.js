@@ -19,23 +19,14 @@ Site.add({
 		note: 'Enter the full respository name, including the user. For example, "jstockwin/deployment" and not just "deployment."',
 	},
 	port: { type: Types.Number, required: true, unique: true, min: 3000, default: 3000 },
-	commit: { type: String },
 	environmentVariables: {
 		type: Types.Relationship,
 		ref: 'EnvironmentVariable',
 		many: true,
 	},
-	servers: {
-		type: Types.Relationship,
-		ref: 'Server',
-		many: true,
-	},
-	deployedServers: {
-		type: Types.Relationship,
-		ref: 'Server',
-		many: true,
-	}
 });
+
+Site.relationship({ path: 'deploys', ref: 'Deployment', refPath: 'site' });
 
 // TODO: We should add some custom validation that checks that no two environment variables are setting the same key. 
 // TODO: Add a pre-save hook which should deploy the site.

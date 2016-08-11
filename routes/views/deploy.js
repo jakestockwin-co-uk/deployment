@@ -1,35 +1,45 @@
 var keystone = require('keystone');
 var child_process = require('child_process');
+var session = require('keystone/lib/session');
+var Site = keystone.list('Site');
+var Deployment = keystone.list('Deployment');
 
 exports = module.exports = function (req, res) {
-	if (!req.user) {
-		addInfo('Not logged in. Please provide uid cookie or log in to deploy versions', res);
+	var onSuccess = function (user) {
+		if (!user.canDeploy) {
+			addInfo('User not authorised to deploy new app versions', res);
+			res.end();
+			return;
+		}
+		Site.model.findOne().where('githubRepository', req.body.project).exec().then(function (site) {
+			return Deployment.model.find().where('site', site).populate('site server').exec();
+		}).then(function (deployments) {
+			// Initialise on new servers
+			let uninitialised = deployments.filter(deploy => !deploy.initialised);
+			console.log(uninitialised);
+			addInfo('Initalising on ' + uninitialised.length.toString() + ' application servers.', res);
+			initCallback(deployments, uninitialised, req.body.commit, res);
+		});
+	};
+
+	var onFail = function (err) {
+		var message = (err && err.message) ? err.message : 'Sorry, that email and/or password are not valid.';
+		addInfo('Failed to log in:', res);
+		addInfo(message, res);
 		res.end();
-		return;
-	}
-	if (!req.user.canDeploy) {
-		addInfo('User not authorised to deploy new app versions', res);
-		res.end();
-		return;
-	}
-	var Site = keystone.list('Site');
-	Site.model.findOne().populate('servers deployedServers environmentVariables').where('githubRepository', req.body.project).exec().then(function (site) {
-		// Initialise on new servers
-		let undeployedServers = site.servers.filter(
-			(server) => !site.deployedServers.some(
-				(deployed) => server._id.toString() === deployed._id.toString()
-			)
-		); // This is not as elegant as I'd hoped. Might want to do it a different way?
-		addInfo('Initalising on ' + undeployedServers.length.toString() + ' application servers.', res);
-		initCallback(site, undeployedServers, req.body.commit, res);
-	});
+	};
+
+	session.signin(req.body, req, res, onSuccess, onFail);
+
 };
 
-function initCallback (site, servers, commit, res) {
-	if (servers.length > 0) {
-		var server = servers.shift(); // Pull first element out of the array. This allows us to iterate over the array by recursion
+function initCallback (allDeployments, newDeployments, commit, res) {
+	if (newDeployments.length > 0) {
+		let currentDeploy = newDeployments.shift(); // Pull first element out of the array. This allows us to iterate over the array by recursion
+		let site = currentDeploy.site;
+		let server = currentDeploy.server;
 		addInfo('Initialising on ' + server.hostname, res);
-		var child = initSiteOnServer(server, site.name, site.githubRepository);
+		let child = initSiteOnServer(server, site.name, site.githubRepository);
 		child.stdout.on('data', (chunk) => { res.write(chunk); });
 		child.on('exit', (status) => {
 			// TODO: Handle failure status
@@ -38,28 +48,48 @@ function initCallback (site, servers, commit, res) {
 			child.stdout.on('data', (chunk) => { res.write(chunk); });
 			child.on('exit', (status) => {
 				// Handle failure status
-				site.deployedServers.push(server);
-				site.save();
-				initCallback(site, servers, commit, res);
+				currentDeploy.initialised = true;
+				currentDeploy.save();
+				initCallback(allDeployments, newDeployments, commit, res);
 			});
 		});
 	} else {
 		// Update on all existing servers
-		let stillToUpdate = site.deployedServers.slice(); // Shallow-copy the array because we don't want to edit the proper version
-		addInfo('Deploying update to ' + stillToUpdate.length.toString() + ' application servers.', res);
-		updateCallback(site, stillToUpdate, commit, res);
+		let validDeployments = allDeployments.filter(deploy => deploy.initialised);
+		addInfo('Deploying update to ' + validDeployments.length.toString() + ' application servers.', res);
+		updateCallback(validDeployments, commit, res);
 	}
 }
 
-function updateCallback (site, servers, commit, res) {
-	if (servers.length > 0) {
-		var server = servers.shift();
+function updateCallback (deployments, commit, res) {
+	if (deployments.length > 0) {
+		let currentDeploy = deployments.shift();
+		let site = currentDeploy.site;
+		let server = currentDeploy.server;
 		addInfo('Deploying to ' + server.hostname, res);
-		var child = updateSite(server, site.name, commit);
+		let child = updateSite(server, site.name, commit);
 		child.stdout.on('data', (chunk) => { res.write(chunk); });
-		child.on('exit', (status) => { updateCallback(site, servers, commit, res); });
+		child.on('exit', (status) => {
+			switch (status) {
+				case 0:
+					currentDeploy.commit = commit;
+					currentDeploy.upToDate = true;
+					currentDeploy.running = true;
+					break;
+				case 2:
+					currentDeploy.upToDate = false;
+					currentDeploy.running = true;
+					break;
+				case 3:
+				case 4:
+					currentDeploy.upToDate = false;
+					currentDeploy.running = false;
+					break;
+			}
+			currentDeploy.save();
+			updateCallback(deployments, commit, res);
+		});
 	} else {
-		site.save();
 		res.end('\n');
 	}
 }
@@ -90,3 +120,4 @@ function addInfo (result, res) {
 	res.write(result);
 	res.write('\n');
 }
+
