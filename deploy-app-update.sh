@@ -18,7 +18,7 @@ git checkout $appCommit || {
 	exit 1
 }
 
-npm install > /dev/null
+npm install 2>&1
 forever --minUptime="${uptime}000" start keystone.js > /dev/null
 sleep $uptime # Give keystone time to get up and running or fail
 if nc -z localhost $PORT
