@@ -34,4 +34,8 @@ keystone.set('nav', {
 	users: 'users',
 });
 
+if (keystone.get('env') === 'production') {
+	keystone.set('session store', 'connect-mongo');
+}
+
 keystone.start();
