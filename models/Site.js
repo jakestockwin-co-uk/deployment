@@ -18,7 +18,7 @@ Site.add({
 		index: true,
 		note: 'Enter the full respository name, including the user. For example, "jstockwin/deployment" and not just "deployment."',
 	},
-	port: { type: Types.Number, required: true, unique: true, min: 3000, default: 3000 },
+	port: { type: Types.Number, initial: true, required: true, unique: true, min: 3000, default: 3000 },
 	environmentVariables: {
 		type: Types.Relationship,
 		ref: 'EnvironmentVariable',
