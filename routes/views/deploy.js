@@ -16,7 +16,6 @@ exports = module.exports = function (req, res) {
 		}).then(function (deployments) {
 			// Initialise on new servers
 			let uninitialised = deployments.filter(deploy => !deploy.initialised);
-			console.log(uninitialised);
 			addInfo('Initalising on ' + uninitialised.length.toString() + ' application servers.', res);
 			initCallback(deployments, uninitialised, req.body.commit, res);
 		});
