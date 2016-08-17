@@ -21,7 +21,7 @@ git checkout $appCommit || {
 npm install 2>&1
 forever --minUptime="${uptime}000" start keystone.js > /dev/null
 sleep $uptime # Give keystone time to get up and running or fail
-if nc -z localhost $PORT
+if nc -z $IP $PORT
 then
 	echo "Running successfully"
 	exit 0
@@ -34,7 +34,7 @@ else # Travis should prevent this situation, but let's handle it anyway.
 		git checkout $currentCommit
 		forever --minUptime="${uptime}000" start keystone.js > /dev/null
 		sleep 10
-		if nc -z localhost $PORT
+		if nc -z $IP $PORT
 		then
 			echo "Previous version back up"
 			exit 2
