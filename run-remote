@@ -4,7 +4,7 @@ host=$1
 shift
 script=$1
 shift
-ssh $host "cd ~/deployment; bash -s" -- <$script $@
+ssh $host "bash -ls" -- <$script $@
 
 # For testing locally instead of over ssh
 #cd ~/Development/deploymentTest
