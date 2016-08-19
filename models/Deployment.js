@@ -14,18 +14,18 @@ Deployment.add({
 		type: Types.Relationship,
 		ref: 'Site',
 		initial: true,
-		noedit: true
+		noedit: true,
 	},
 	server: {
 		type: Types.Relationship,
 		ref: 'Server',
 		initial: true,
-		noedit: true
+		noedit: true,
 	},
 	commit: { type: String, noedit: true },
 	initialised: { type: Types.Boolean, default: false, hidden: false },
-	upToDate: { type: Types.Boolean, default: false, hidden: false },	
-	running: { type: Types.Boolean, default: false, hidden: false }
+	upToDate: { type: Types.Boolean, default: false, hidden: false },
+	running: { type: Types.Boolean, default: false, hidden: false },
 });
 
 // TODO: Add a pre-save hook which should deploy the site to the set commit?
