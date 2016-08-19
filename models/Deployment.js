@@ -28,7 +28,7 @@ Deployment.add({
 	running: { type: Types.Boolean, default: false, hidden: false },
 });
 
-// TODO: Add a pre-save hook which should deploy the site to the set commit?
+Deployment.schema.index({ site: 1, server: 1 }, { unique: true });
 
 /**
  * Registration
