@@ -39,13 +39,13 @@ function initCallback (allDeployments, newDeployments, commit, res) {
 		let server = currentDeploy.server;
 		addInfo('Initialising on ' + server.hostname, res);
 		let child = initSiteOnServer(server, site.name, site.githubRepository);
-		child.stdout.on('data', (chunk) => { res.write(chunk); });
+		child.stdout.on('data', (chunk) => { res.write(chunk.toString().replace(/^(?!\s*$)/mg, '    ')); });
 		child.on('exit', (status) => {
 			// TODO: Handle failure status
 			addInfo('Writing .env to ' + server.hostname, res);
 			site.populate('environmentVariables', function () {
 				var child = writeEnv(server, site.name, site.environmentVariables, site.port);
-				child.stdout.on('data', (chunk) => { res.write(chunk); });
+				child.stdout.on('data', (chunk) => { res.write(chunk.toString().replace(/^(?!\s*$)/mg, '    ')); });
 				child.on('exit', (status) => {
 					// Handle failure status
 					currentDeploy.initialised = true;
@@ -69,7 +69,7 @@ function updateCallback (deployments, commit, res) {
 		let server = currentDeploy.server;
 		addInfo('Deploying to ' + server.hostname, res);
 		let child = updateSite(server, site.name, commit);
-		child.stdout.on('data', (chunk) => { res.write(chunk); });
+		child.stdout.on('data', (chunk) => { res.write(chunk.toString().replace(/^(?!\s*$)/mg, '    ')); });
 		child.on('exit', (status) => {
 			switch (status) {
 				case 0:
