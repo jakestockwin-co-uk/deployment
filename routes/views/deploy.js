@@ -1,5 +1,4 @@
 var keystone = require('keystone');
-var child_process = require('child_process');
 var session = require('keystone/lib/session');
 var Site = keystone.list('Site');
 var Deployment = keystone.list('Deployment');
@@ -35,24 +34,16 @@ exports = module.exports = function (req, res) {
 function initCallback (allDeployments, newDeployments, commit, res) {
 	if (newDeployments.length > 0) {
 		let currentDeploy = newDeployments.shift(); // Pull first element out of the array. This allows us to iterate over the array by recursion
-		let site = currentDeploy.site;
-		let server = currentDeploy.server;
-		addInfo('Initialising on ' + server.hostname, res);
-		let child = initSiteOnServer(server, site.name, site.githubRepository);
-		child.stdout.on('data', (chunk) => { res.write(chunk.toString().replace(/^(?!\s*$)/mg, '    ')); });
-		child.on('exit', (status) => {
+		addInfo('Initialising on ' + currentDeploy.server.hostname, res);
+		currentDeploy.initSiteOnServer(res).then(function (status) {
 			// TODO: Handle failure status
-			addInfo('Writing .env to ' + server.hostname, res);
-			site.populate('environmentVariables', function () {
-				var child = writeEnv(server, site.name, site.environmentVariables, site.port);
-				child.stdout.on('data', (chunk) => { res.write(chunk.toString().replace(/^(?!\s*$)/mg, '    ')); });
-				child.on('exit', (status) => {
-					// Handle failure status
-					currentDeploy.initialised = true;
-					currentDeploy.save();
-					initCallback(allDeployments, newDeployments, commit, res);
-				});
-			});
+			addInfo('Writing .env to ' + currentDeploy.server.hostname, res);
+			return currentDeploy.writeEnv(res);
+		}).then(function (status) {
+			// Handle failure status
+			currentDeploy.initialised = true;
+			currentDeploy.save();
+			initCallback(allDeployments, newDeployments, commit, res);
 		});
 	} else {
 		// Update on all existing servers
@@ -65,12 +56,8 @@ function initCallback (allDeployments, newDeployments, commit, res) {
 function updateCallback (deployments, commit, res) {
 	if (deployments.length > 0) {
 		let currentDeploy = deployments.shift();
-		let site = currentDeploy.site;
-		let server = currentDeploy.server;
-		addInfo('Deploying to ' + server.hostname, res);
-		let child = updateSite(server, site.name, commit);
-		child.stdout.on('data', (chunk) => { res.write(chunk.toString().replace(/^(?!\s*$)/mg, '    ')); });
-		child.on('exit', (status) => {
+		addInfo('Deploying to ' + currentDeploy.server.hostname, res);
+		currentDeploy.updateSite(commit, res).then(function (status) {
 			switch (status) {
 				case 0:
 					currentDeploy.commit = commit;
@@ -93,28 +80,6 @@ function updateCallback (deployments, commit, res) {
 	} else {
 		res.end('\n');
 	}
-}
-
-function initSiteOnServer (server, siteName, repo) {
-	var command = './run-remote';
-	var args = [server.hostname, 'deploy-new-app.sh', siteName, repo]; // For these we might want to stick a user@ string onto the start of the host string.
-	return child_process.spawn(command, args);
-}
-
-function writeEnv (server, siteName, vars, port) {
-	var command = './write-remote-file';
-	var fileContents = vars.map((varObject) => varObject.key + '=' + varObject.value).concat('PORT=' + port.toString()).reduce((last, current) => last + '\n' + current);
-	var args = [server.hostname, siteName + '/.env'];
-	var child = child_process.spawn(command, args);
-	child.stdin.write(fileContents);
-	child.stdin.end();
-	return child;
-}
-
-function updateSite (server, siteName, commit) {
-	var command = './run-remote';
-	var args = [server.hostname, 'deploy-app-update.sh', siteName, commit];
-	return child_process.spawn(command, args);
 }
 
 function addInfo (result, res) {

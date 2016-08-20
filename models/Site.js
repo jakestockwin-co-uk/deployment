@@ -31,6 +31,19 @@ Site.relationship({ path: 'deploys', ref: 'Deployment', refPath: 'site' });
 // TODO: We should add some custom validation that checks that no two environment variables are setting the same key.
 // TODO: Add a pre-save hook which should deploy the site.
 
+Site.schema.methods.loadEnvVariables = function () {
+	return new Promise((resolve, reject) => {
+		this.populate('environmentVariables', function (error, site) {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(site);
+			}
+		});
+	});
+};
+
+
 /**
  * Registration
  */
