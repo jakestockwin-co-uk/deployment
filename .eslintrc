@@ -1,3 +1,6 @@
 {
-    "extends": "keystone"
+    "extends": "keystone",
+    "parserOptions": {
+      "sourceType": "script"
+    }
 }
