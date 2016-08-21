@@ -2,21 +2,69 @@ var keystone = require('keystone');
 var session = require('keystone/lib/session');
 var Site = keystone.list('Site');
 var Deployment = keystone.list('Deployment');
+var Promise = require('bluebird');
+var asyncawait = require('asyncawait');
+var async = asyncawait.async;
+var await = asyncawait.await;
 
 exports = module.exports = function (req, res) {
 	var onSuccess = function (user) {
+		var site;
+
 		if (!user.canDeploy) {
 			addInfo('User not authorised to deploy new app versions', res);
 			res.end();
 			return;
 		}
-		Site.model.findOne().where('githubRepository', req.body.project).exec().then(function (site) {
-			return Deployment.model.find().where('site', site).populate('site server').exec();
-		}).then(function (deployments) {
-			// Initialise on new servers
-			let uninitialised = deployments.filter(deploy => !deploy.initialised);
+
+		Site.model.findOne().where('githubRepository', req.body.project).exec().then(function (found) {
+			site = found;
+			// Get all the servers we're not on yet
+			return Deployment.model.find().where('site', site).where('initialised', false).populate('site server').exec();
+		}).then(function (uninitialised) {
+			if (!uninitialised.length) {
+				return;
+			}
+			// Initialise on any new servers
 			addInfo('Initalising on ' + uninitialised.length.toString() + ' application servers.', res);
-			initCallback(deployments, uninitialised, req.body.commit, res);
+			return uninitialised.reduce(function (chain, deployment) {
+				return chain.then(function () {
+					// Do the initialisation
+					return initPromise(deployment, res)
+				}).then(function () {
+					// Copy the env over
+					return envPromise(deployment, res)
+				}).then(function () {
+					deployment.initialised = true;
+					return deployment.save();
+				}).catch(function (err) {
+					// If a command failed somewhere, set to uninitialised.
+					console.log('Error initialising server');
+					console.log(err);
+					deployment.initialised = false;
+					return deployment.save();
+				});
+			}, Promise.resolve());
+		}).then(function () {
+			// Get all the servers we're initialised on now
+			return Deployment.model.find().where('site', site).where('initialised', true).populate('site server').exec();
+		}).then(function (initialised) {
+			if (!initialised.length) {
+				return;
+			}
+			// Update on all the servers we're on
+			addInfo('Deploying update to ' + initialised.length.toString() + ' application servers.', res);
+			return initialised.reduce(function(chain, deployment) {
+				return chain.then(function () {
+					// Update the deployment
+					return updatePromise(deployment, req.body.commit, res)
+				});
+			}, Promise.resolve());
+		}).then(null, function (err) { // .catch(function (err { // but mpromise doesn't support catch.
+			console.log("ERROR: ");
+			console.log(err);
+		}).then(function () {
+			res.end('\n');
 		});
 	};
 
@@ -31,55 +79,19 @@ exports = module.exports = function (req, res) {
 
 };
 
-function initCallback (allDeployments, newDeployments, commit, res) {
-	if (newDeployments.length > 0) {
-		let currentDeploy = newDeployments.shift(); // Pull first element out of the array. This allows us to iterate over the array by recursion
-		addInfo('Initialising on ' + currentDeploy.server.hostname, res);
-		currentDeploy.initSiteOnServer(res).then(function (status) {
-			// TODO: Handle failure status
-			addInfo('Writing .env to ' + currentDeploy.server.hostname, res);
-			return currentDeploy.writeEnv(res);
-		}).then(function (status) {
-			// Handle failure status
-			currentDeploy.initialised = true;
-			currentDeploy.save();
-			initCallback(allDeployments, newDeployments, commit, res);
-		});
-	} else {
-		// Update on all existing servers
-		let validDeployments = allDeployments.filter(deploy => deploy.initialised);
-		addInfo('Deploying update to ' + validDeployments.length.toString() + ' application servers.', res);
-		updateCallback(validDeployments, commit, res);
-	}
+function initPromise (deployment, res) {
+	addInfo('Initialising on ' + deployment.server.hostname, res);
+	return deployment.initDeploy(res);
 }
 
-function updateCallback (deployments, commit, res) {
-	if (deployments.length > 0) {
-		let currentDeploy = deployments.shift();
-		addInfo('Deploying to ' + currentDeploy.server.hostname, res);
-		currentDeploy.updateSite(commit, res).then(function (status) {
-			switch (status) {
-				case 0:
-					currentDeploy.commit = commit;
-					currentDeploy.upToDate = true;
-					currentDeploy.running = true;
-					break;
-				case 2:
-					currentDeploy.upToDate = false;
-					currentDeploy.running = true;
-					break;
-				case 3:
-				case 4:
-					currentDeploy.upToDate = false;
-					currentDeploy.running = false;
-					break;
-			}
-			currentDeploy.save();
-			updateCallback(deployments, commit, res);
-		});
-	} else {
-		res.end('\n');
-	}
+function envPromise (deployment, res) {
+	addInfo('Writing .env to ' + deployment.server.hostname, res);
+	return deployment.writeEnv(res);
+}
+
+function updatePromise (deployment, commit, res) {
+	addInfo('Deploying to ' + deployment.server.hostname, res);
+	return deployment.updateToCommit(commit, res);
 }
 
 function addInfo (result, res) {

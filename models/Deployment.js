@@ -33,26 +33,14 @@ Deployment.add({
 Deployment.schema.index({ site: 1, server: 1 }, { unique: true });
 
 Deployment.schema.methods.loadSiteAndServer = function () {
-	return new Promise((resolve, reject) => {
-		this.populate('site server', function (error, deploy) {
-			if (error) {
-				reject(error);
-			} else {
-				resolve(deploy);
-			}
-		});
-	});
+	if (this.populated('site') && this.populated('server')) {
+		return Promise.resolve(this);
+	}
+
+	return this.populateAsync('site server');
 };
 
-Deployment.schema.methods.updateSite = function (commit, outStream) {
-	return this.loadSiteAndServer().then(() => {
-		var command = './run-remote';
-		var args = [this.server.hostname, 'deploy-app-update.sh', this.site.name, commit];
-		return spawn_child(command, args, outStream);
-	});
-};
-
-Deployment.schema.methods.initSiteOnServer = function (outStream) {
+Deployment.schema.methods.initDeploy = function (outStream) {
 	return this.loadSiteAndServer().then(() => {
 		var command = './run-remote';
 		var args = [this.server.hostname, 'deploy-new-app.sh', this.site.name, this.site.githubRepository];
@@ -71,6 +59,43 @@ Deployment.schema.methods.writeEnv = function (outStream) {
 			.concat('PORT=' + this.site.port.toString())
 			.reduce((last, current) => last + '\n' + current);
 		return spawn_child(command, args, outStream, fileContents);
+	});
+};
+
+Deployment.schema.methods.updateToCommit = function (commit, outStream) {
+	return this.loadSiteAndServer().then(() => {
+		var command = './run-remote';
+		var args = [this.server.hostname, 'deploy-app-update.sh', this.site.name, commit];
+		return spawn_child(command, args, outStream);
+	}).then((status) => {
+		var err;
+		switch (status) {
+			case 0:
+				this.commit = commit;
+				this.upToDate = true;
+				this.running = true;
+				break;
+			case 2:
+				this.upToDate = false;
+				this.running = true;
+				err = 'Failed, but managed to revert';
+				break;
+			case 3:
+				this.upToDate = false;
+				this.running = false;
+				err = 'Failed and failed to revert. App is not running.';
+				break;
+			case 4:
+				this.upToDate = false;
+				this.running = false;
+				err = 'Failed, and version failed was the first commit tried.';
+				break;
+		}
+		this.save();
+		if (err) {
+			throw err;
+		}
+		return 0;
 	});
 };
 

@@ -32,17 +32,12 @@ Site.relationship({ path: 'deploys', ref: 'Deployment', refPath: 'site' });
 // TODO: Add a pre-save hook which should deploy the site.
 
 Site.schema.methods.loadEnvVariables = function () {
-	return new Promise((resolve, reject) => {
-		this.populate('environmentVariables', function (error, site) {
-			if (error) {
-				reject(error);
-			} else {
-				resolve(site);
-			}
-		});
-	});
-};
+	if (this.populated('environmentVariables')) {
+		return Promise.resolve(this);
+	}
 
+	return this.populateAsync('environmentVariables');
+};
 
 /**
  * Registration
