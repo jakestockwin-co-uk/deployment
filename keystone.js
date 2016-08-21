@@ -4,6 +4,8 @@ require('dotenv').config();
 
 // Require keystone
 var keystone = require('keystone');
+var mongoose = require('mongoose');
+var Promise = require('bluebird');
 
 keystone.init({
 	'name': 'Deployment Server',
@@ -37,5 +39,7 @@ keystone.set('nav', {
 if (keystone.get('env') === 'production') {
 	keystone.set('session store', 'connect-mongo');
 }
+
+mongoose.Document.prototype.populateAsync = Promise.promisify(mongoose.Document.prototype.populate);
 
 keystone.start();
