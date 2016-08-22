@@ -84,7 +84,7 @@ Deployment.schema.methods.updateToCommit = async(function (commit, outStream) {
 	await(this.save());
 
 	if (err) {
-		throw {status: status, message: err};
+		throw new Error(err);
 	}
 	return 0;
 });
