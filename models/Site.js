@@ -24,6 +24,10 @@ Site.add({
 		ref: 'EnvironmentVariable',
 		many: true,
 	},
+	lastAttemptedCommit: { type: String, initial: true },
+	lastSuccessfulCommit: { type: String, noedit: true },
+	lastDeploySuccessful: { type: Types.Boolean, default: false, noedit: true },
+	allServersRunning: { type: Types.Boolean, default: false, noedit: true },
 });
 
 Site.relationship({ path: 'deploys', ref: 'Deployment', refPath: 'site' });

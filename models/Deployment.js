@@ -27,9 +27,7 @@ Deployment.add({
 		initial: true,
 		noedit: true,
 	},
-	commit: { type: String, noedit: true },
 	initialised: { type: Types.Boolean, default: false, hidden: false },
-	upToDate: { type: Types.Boolean, default: false, hidden: false },
 	running: { type: Types.Boolean, default: false, hidden: false },
 });
 
