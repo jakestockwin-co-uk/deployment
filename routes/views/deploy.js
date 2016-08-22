@@ -91,8 +91,13 @@ exports = module.exports = function (req, res) {
 		return finish(false, res);
 	};
 
-	session.signin(req.body, req, res, onSuccess, onFail);
-
+	if (req.user && req.user.canDeploy) {
+		onSuccess(req.user);
+	} else if (req.body.email && req.body.password) {
+		session.signin(req.body, req, res, onSuccess, onFail);
+	} else {
+		onFail(new Error('You must be logged in, or provide email and password credentials in your request, to deploy things'))
+	}
 };
 
 function initPromise (deployment, res) {
