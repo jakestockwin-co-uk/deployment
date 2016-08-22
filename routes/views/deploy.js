@@ -57,6 +57,24 @@ exports = module.exports = function (req, res) {
 					site.lastDeploySuccessful = true;
 					site.allServersRunning = true;
 					await(site.save());
+				} catch (err) {
+					addInfo('Updating a deployment has failed:', res);
+					addInfo(err.message, res);
+					addInfo('I will try to revert all those that I have already updated.', res);
+					let running = true;
+					for (let deployment of attemptedDeployments) {
+						try {
+							await(updatePromise(deployment, deployment.site.lastSuccessfulCommit, res));
+						} catch (err) {
+							running = false;
+							addInfo('Error while reverting deployment on ' + deployment.server.hostname + '.', res);
+							addInfo(err.message, res);
+							addInfo('Something is very wrong. I will keep trying with the rest though, because I don\'t know what else to do.', res);
+						}
+					}
+					site.lastDeploySuccessful = false;
+					site.allServersRunning = running;
+					await(site.save());
 				}
 			}
 		} catch (err) {
