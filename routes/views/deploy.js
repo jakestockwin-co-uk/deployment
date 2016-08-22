@@ -10,8 +10,7 @@ exports = module.exports = function (req, res) {
 	var onSuccess = async(function (user) {
 		if (!user.canDeploy) {
 			addInfo('User not authorised to deploy new app versions', res);
-			res.end();
-			return;
+			return finish(false, res);
 		}
 
 		try {
@@ -57,6 +56,7 @@ exports = module.exports = function (req, res) {
 					site.lastDeploySuccessful = true;
 					site.allServersRunning = true;
 					await(site.save());
+					return finish(true, res);
 				} catch (err) {
 					addInfo('Updating a deployment has failed:', res);
 					addInfo(err.message, res);
@@ -75,13 +75,12 @@ exports = module.exports = function (req, res) {
 					site.lastDeploySuccessful = false;
 					site.allServersRunning = running;
 					await(site.save());
+					return finish(false, res);
 				}
 			}
 		} catch (err) {
 			console.log('ERROR: ');
 			console.log(err);
-		} finally {
-			res.end('\n');
 		}
 	});
 
@@ -89,7 +88,7 @@ exports = module.exports = function (req, res) {
 		var message = (err && err.message) ? err.message : 'Sorry, that email and/or password are not valid.';
 		addInfo('Failed to log in:', res);
 		addInfo(message, res);
-		res.end();
+		return finish(false, res);
 	};
 
 	session.signin(req.body, req, res, onSuccess, onFail);
@@ -114,5 +113,10 @@ function updatePromise (deployment, commit, res) {
 function addInfo (result, res) {
 	res.write(result);
 	res.write('\n');
+}
+
+function finish (success, res) {
+	res.write(success ? '[SUCCESS]' : '[FAILURE]');
+	res.end('\n');
 }
 
