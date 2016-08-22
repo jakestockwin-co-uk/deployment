@@ -17,6 +17,8 @@ exports = module.exports = function (req, res) {
 		try {
 
 			let site = await(Site.model.findOne().where('githubRepository', req.body.project).exec());
+			site.lastAttemptedCommit = req.body.commit;
+			await (site.save());
 
 			// Get all the servers we're not on yet
 			let uninitialised = await(Deployment.model.find().where('site', site).where('initialised', false).populate('site server').exec());
@@ -44,13 +46,17 @@ exports = module.exports = function (req, res) {
 			if (initialised.length) {
 				// Update on all the servers we're on
 				addInfo('Deploying update to ' + initialised.length.toString() + ' application servers.', res);
-				let successfulDeployments = [];
+				let attemptedDeployments = [];
 
 				try {
 					for (let deployment of initialised) {
-						await(updatePromise(deployment, req.body.commit, res));
-						successfulDeployments.push(deployment);
+						attemptedDeployments.push(deployment);
+						await(updatePromise(deployment, deployment.site.lastAttemptedCommit, res));
 					}
+					site.lastSuccessfulCommit = site.lastAttemptedCommit;
+					site.lastDeploySuccessful = true;
+					site.allServersRunning = true;
+					await(site.save());
 				}
 			}
 		} catch (err) {

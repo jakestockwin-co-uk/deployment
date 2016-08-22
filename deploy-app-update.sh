@@ -12,10 +12,10 @@ git fetch
 currentCommit=`git rev-parse HEAD` || unset currentCommit
 
 git checkout $appCommit || {
-	echo "Commit does not exist"
+	echo "Checkout failed. Panicking."
 	git checkout $currentCommit
 	forever --minUptime="${uptime}000" start keystone.js > /dev/null
-	exit 1
+	exit 2
 }
 
 npm install 2>&1
@@ -28,31 +28,11 @@ then
 else # Travis should prevent this situation, but let's handle it anyway.
 	echo "Failed to start server"
 	forever stop keystone.js > /dev/null # Just in case
-	if [ -n "$currentCommit" ]
-	then
-		echo "Reverting to previous commit"
-		git checkout $currentCommit
-		forever --minUptime="${uptime}000" start keystone.js > /dev/null
-		sleep 10
-		if nc -z $IP $PORT
-		then
-			echo "Previous version back up"
-			exit 2
-		else
-			echo "Previous version also failed"
-			echo "Giving up..."
-			exit 3
-		fi
-	else
-		echo "Failed on first commit tried"
-		echo "Giving up..."
-		exit 4
-	fi
+	exit 1
 fi
 
 # Exit codes:
 # 	0 - success
-# 	1 - no commit
-# 	2 - failed, but successfully reverted to previous
-# 	3 - failed, and failed to revert to previous
-# 	4 - failed on first deployment
+# 	1 - failure
+# 	2 - can't checkout
+

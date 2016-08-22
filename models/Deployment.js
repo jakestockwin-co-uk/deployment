@@ -62,36 +62,29 @@ Deployment.schema.methods.writeEnv = async(function (outStream) {
 
 Deployment.schema.methods.updateToCommit = async(function (commit, outStream) {
 	await(this.loadSiteAndServer());
-	var command = './run-remote';
-	var args = [this.server.hostname, 'deploy-app-update.sh', this.site.name, commit];
+	let command = './run-remote';
+	let args = [this.server.hostname, 'deploy-app-update.sh', this.site.name, commit];
 	let status = await(spawn_child(command, args, outStream));
 
-	var err;
+	let err = '';
 	switch (status) {
 		case 0:
-			this.commit = commit;
-			this.upToDate = true;
 			this.running = true;
+			break;
+		case 1:
+			this.running = false;
+			err = 'Failed to start updated server';
 			break;
 		case 2:
-			this.upToDate = false;
-			this.running = true;
-			err = 'Failed, but managed to revert';
-			break;
-		case 3:
-			this.upToDate = false;
 			this.running = false;
-			err = 'Failed and failed to revert. App is not running.';
-			break;
-		case 4:
-			this.upToDate = false;
-			this.running = false;
-			err = 'Failed, and version failed was the first commit tried.';
+			err = 'Failed to checkout changes';
 			break;
 	}
-	this.save();
+
+	await(this.save());
+
 	if (err) {
-		throw err;
+		throw {status: status, message: err};
 	}
 	return 0;
 });
