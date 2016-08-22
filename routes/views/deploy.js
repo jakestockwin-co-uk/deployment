@@ -2,7 +2,6 @@ var keystone = require('keystone');
 var session = require('keystone/lib/session');
 var Site = keystone.list('Site');
 var Deployment = keystone.list('Deployment');
-var Promise = require('bluebird');
 var asyncawait = require('asyncawait');
 var async = asyncawait.async;
 var await = asyncawait.await;
@@ -26,24 +25,17 @@ exports = module.exports = function (req, res) {
 				// Initialise on any new servers
 				addInfo('Initalising on ' + uninitialised.length.toString() + ' application servers.', res);
 
-				await(uninitialised.reduce(function (chain, deployment) {
-					return chain.then(function () {
-						// Do the initialisation
-						return initPromise(deployment, res);
-					}).then(function () {
-						// Copy the env over
-						return envPromise(deployment, res);
-					}).then(function () {
+				for (let deployment of uninitialised) {
+					try {
+						await(initPromise(deployment, res));
+						await(envPromise(deployment, res));
 						deployment.initialised = true;
-						return deployment.save();
-					}).catch(function (err) {
-						// If a command failed somewhere, set to uninitialised.
-						console.log('Error initialising server');
-						console.log(err);
+					} catch (err) {
 						deployment.initialised = false;
-						return deployment.save();
-					});
-				}, Promise.resolve()));
+					} finally {
+						await(deployment.save());
+					}
+				}
 			}
 
 			// Get all the servers we're initialised on now
@@ -52,12 +44,14 @@ exports = module.exports = function (req, res) {
 			if (initialised.length) {
 				// Update on all the servers we're on
 				addInfo('Deploying update to ' + initialised.length.toString() + ' application servers.', res);
-				await(initialised.reduce(function (chain, deployment) {
-					return chain.then(function () {
-						// Update the deployment
-						return updatePromise(deployment, req.body.commit, res);
-					});
-				}, Promise.resolve()));
+				let successfulDeployments = [];
+
+				try {
+					for (let deployment of initialised) {
+						await(updatePromise(deployment, req.body.commit, res));
+						successfulDeployments.push(deployment);
+					}
+				}
 			}
 		} catch (err) {
 			console.log('ERROR: ');
