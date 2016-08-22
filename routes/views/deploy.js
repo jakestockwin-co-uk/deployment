@@ -21,8 +21,14 @@ exports = module.exports = function (req, res) {
 		try {
 
 			let site = await(Site.model.findOne().where('githubRepository', req.body.project).exec());
-			site.lastAttemptedCommit = req.body.commit;
-			await (site.save());
+
+			if (req.body.commit) {
+				site.lastAttemptedCommit = req.body.commit;
+			} else {
+				addInfo('No commit specified, redeploying the last attempted');
+			}
+
+			await(site.save());
 
 			// Get all the servers we're not on yet
 			let uninitialised = await(Deployment.model.find().where('site', site).where('initialised', false).populate('site server').exec());
@@ -86,6 +92,7 @@ exports = module.exports = function (req, res) {
 		} catch (err) {
 			console.log('ERROR: ');
 			console.log(err);
+			return finish(false, res);
 		}
 	});
 
