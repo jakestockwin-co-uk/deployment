@@ -13,6 +13,11 @@ exports = module.exports = function (req, res) {
 			return finish(false, res);
 		}
 
+		if (!req.body.project) {
+			addInfo('No project specified. Aborting.', res);
+			return finish(false, res);
+		}
+
 		try {
 
 			let site = await(Site.model.findOne().where('githubRepository', req.body.project).exec());
