@@ -33,6 +33,11 @@ Deployment.add({
 
 Deployment.schema.index({ site: 1, server: 1 }, { unique: true });
 
+Deployment.schema.pre('remove', async(function(next) {
+	await(this.removeDeploy(null));
+	next();
+}))
+
 Deployment.schema.methods.loadSiteAndServer = function () {
 	if (this.populated('site') && this.populated('server')) {
 		return Promise.resolve(this);
