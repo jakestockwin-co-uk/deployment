@@ -25,7 +25,7 @@ exports = module.exports = function (req, res) {
 			if (req.body.commit) {
 				site.lastAttemptedCommit = req.body.commit;
 			} else {
-				addInfo('No commit specified, redeploying the last attempted');
+				addInfo('No commit specified, redeploying the last attempted', res);
 			}
 
 			await(site.save());
