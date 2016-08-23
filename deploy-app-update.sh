@@ -26,7 +26,8 @@ then
 	echo "Running successfully"
 	exit 0
 else # Travis should prevent this situation, but let's handle it anyway.
-	echo "Failed to start server"
+	echo "Failed to start server:"
+	forever logs keystone.js
 	forever stop keystone.js > /dev/null # Just in case
 	exit 1
 fi
