@@ -48,6 +48,13 @@ Deployment.schema.methods.initDeploy = async(function (outStream) {
 	return spawn_child(command, args, outStream);
 });
 
+Deployment.schema.methods.removeDeploy = async(function (outStream) {
+	await(this.loadSiteAndServer());
+	var command = './run-remote';
+	var args = [this.server.hostname, 'remove-app.sh', this.site.name];
+	return spawn_child(command, args, outStream);
+});
+
 Deployment.schema.methods.writeEnv = async(function (outStream) {
 	await(this.loadSiteAndServer());
 	await(this.site.loadEnvVariables());
