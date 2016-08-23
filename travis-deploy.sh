@@ -4,7 +4,7 @@ STATUS=0
 
 echo "Deploying $TRAVIS_COMMIT"
 
-curl -NX POST https://deployment.jakestockwin.co.uk/deploy --data "project=$TRAVIS_REPO_SLUG&commit=$TRAVIS_COMMIT&email=$EMAIL&password=$PASSWORD" | while IFS= read -r LINE
+curl -sNX POST https://deployment.jakestockwin.co.uk/deploy --data "project=$TRAVIS_REPO_SLUG&commit=$TRAVIS_COMMIT&email=$EMAIL&password=$PASSWORD" | while IFS= read -r LINE
 do
 	if [[ ${LINE} == "[SUCCESS]" ]]
 	then
@@ -15,7 +15,7 @@ do
 		echo "Deployment failed"
 		STATUS=1
 	else
-		echo $LINE
+		echo "$LINE"
 	fi
 done
 
