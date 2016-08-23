@@ -1,5 +1,9 @@
 var keystone = require('keystone');
+var Deployment = keystone.list('Deployment');
 var crypto = require('crypto');
+var asyncawait = require('asyncawait');
+var async = asyncawait.async;
+var await = asyncawait.await;
 var Types = keystone.Field.Types;
 
 /**
@@ -36,6 +40,14 @@ Site.relationship({ path: 'deploys', ref: 'Deployment', refPath: 'site' });
 
 // TODO: We should add some custom validation that checks that no two environment variables are setting the same key.
 // TODO: Add a pre-save hook which should deploy the site.
+
+Site.schema.pre('remove', async(function (next) {
+	let deployments = await(Deployment.model.find().where('site', this).populate('site server').exec());
+	for (let deployment of deployments) {
+		await(deployment.remove());
+	}
+	next();
+}));
 
 Site.schema.methods.loadEnvVariables = function () {
 	if (this.populated('environmentVariables')) {
