@@ -1,4 +1,5 @@
 var keystone = require('keystone');
+var crypto = require('crypto');
 var Types = keystone.Field.Types;
 
 /**
@@ -19,6 +20,7 @@ Site.add({
 		note: 'Enter the full respository name, including the user. For example, "jstockwin/deployment" and not just "deployment."',
 	},
 	port: { type: Types.Number, initial: true, required: true, unique: true, min: 3000, default: 3000 },
+	cookieSecret: { type: String, default: () => crypto.randomBytes(64).toString('hex') },
 	environmentVariables: {
 		type: Types.Relationship,
 		ref: 'EnvironmentVariable',

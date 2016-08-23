@@ -56,6 +56,7 @@ Deployment.schema.methods.writeEnv = async(function (outStream) {
 	var fileContents = this.site.environmentVariables
 		.map((varObject) => varObject.key + '=' + varObject.value)
 		.concat('PORT=' + this.site.port.toString())
+		.concat('COOKIE_SECRET=' + this.site.cookieSecret.toString())
 		.reduce((last, current) => last + '\n' + current);
 	return spawn_child(command, args, outStream, fileContents);
 });

@@ -108,7 +108,7 @@ exports = module.exports = function (req, res) {
 	} else if (req.body.email && req.body.password) {
 		session.signin(req.body, req, res, onSuccess, onFail);
 	} else {
-		onFail(new Error('You must be logged in, or provide email and password credentials in your request, to deploy things'))
+		onFail(new Error('You must be logged in, or provide email and password credentials in your request, to deploy things'));
 	}
 };
 
