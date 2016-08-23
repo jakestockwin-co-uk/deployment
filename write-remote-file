@@ -8,5 +8,5 @@ ssh $host "tee $filename > /dev/null"
 # Send file contents to stdin
 
 # For testing locally instead of over ssh
-#cd ~/Development/deploymentTest
+#cd ~/Development/deploymentTest/$host
 #tee $filename > /dev/null

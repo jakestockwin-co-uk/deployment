@@ -7,5 +7,5 @@ shift
 ssh $host "bash -ls" -- <$script $@
 
 # For testing locally instead of over ssh
-#cd ~/Development/deploymentTest
+#cd ~/Development/deploymentTest/$host
 #bash -s < ~/Development/deployment/$script $@
