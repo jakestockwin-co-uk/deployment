@@ -40,7 +40,7 @@ exports.get = function (req, res) {
 exports.create = function (req, res) {
 
 	var item = new Server.model();
-	var	data = (req.method === 'Server') ? req.body : req.query;
+	var	data = (req.method === 'POST') ? req.body : req.query;
 
 	item.getUpdateHandler(req).process(data, function (err) {
 
@@ -62,7 +62,7 @@ exports.update = function (req, res) {
 		if (err) return res.apiError('database error', err);
 		if (!item) return res.apiError('not found');
 
-		var data = (req.method === 'Server') ? req.body : req.query;
+		var data = (req.method === 'POST') ? req.body : req.query;
 
 		item.getUpdateHandler(req).process(data, function (err) {
 
