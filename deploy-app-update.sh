@@ -1,7 +1,7 @@
 appName=$1
 appCommit=$2
 
-uptime=15 # May need to adjust for apps with longer startup
+uptime=30 # May need to adjust for apps with longer startup
 
 cd $appName
 source .env
