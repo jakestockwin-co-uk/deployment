@@ -11,9 +11,9 @@ git fetch
 
 currentCommit=`git rev-parse HEAD` || unset currentCommit
 
-git checkout $appCommit || {
-	echo "Checkout failed. Panicking."
-	git checkout $currentCommit
+git checkout -f $appCommit || {
+	echo "Checkout failed. Either the commit does not exist, or git is refusing to checkout for some other reason."
+	git checkout -f $currentCommit
 	forever --minUptime="${uptime}000" start keystone.js > /dev/null
 	exit 2
 }
