@@ -61,6 +61,7 @@ Deployment.schema.methods.removeDeploy = async(function (outStream) {
 });
 
 Deployment.schema.methods.writeEnv = async(function (outStream) {
+	console.log(this);
 	await(this.loadSiteAndServer());
 	await(this.site.loadEnvVariables());
 	var command = './write-remote-file';
@@ -101,6 +102,31 @@ Deployment.schema.methods.updateToCommit = async(function (commit, outStream) {
 	}
 	return 0;
 });
+
+Deployment.schema.methods.restart = async(function (outStream) {
+	await(this.loadSiteAndServer());
+	let command = './run-remote';
+	let args = [this.server.hostname, 'restart-app.sh', this.site.name];
+	let status = await(spawn_child(command, args, outStream));
+
+	let err = '';
+	switch (status) {
+		case 0:
+			this.running = true;
+			break;
+		case 1:
+			this.running = false;
+			err = 'Failed to restart server';
+			break;
+	}
+
+	await(this.save());
+
+	if (err) {
+		throw new Error(err);
+	}
+	return 0;
+})
 
 /**
  * Registration

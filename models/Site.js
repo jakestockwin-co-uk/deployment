@@ -1,6 +1,7 @@
 var keystone = require('keystone');
 var Deployment = keystone.list('Deployment');
 var crypto = require('crypto');
+var stream = require('stream');
 var asyncawait = require('asyncawait');
 var async = asyncawait.async;
 var await = asyncawait.await;
@@ -47,6 +48,31 @@ Site.schema.pre('remove', async(function (next) {
 		await(deployment.remove());
 	}
 	next();
+}));
+
+Site.schema.pre('save', async(function (next) {
+	if(this.isModified('port') || this.isModified('environmentVariables') || this.isModified('cookieSecret')) {
+		console.log('updating .env');
+		console.log(this);
+		// We want to update our deployments' .env files
+		let outStream = new stream.Writable({
+			write: function(chunk, encoding, next) {
+				console.log(chunk.toString());
+				next();
+			}
+		});
+		let deployments = await(Deployment.model.find().where('site', this).populate('server').exec());
+		for (let deployment of deployments) {
+			deployment.site = this;
+			console.log(deployment);
+			deployment.populated('site', this);
+			console.log('writing file');
+			await(deployment.writeEnv(outStream));
+			console.log('restarting server');
+			await(deployment.restart(outStream));
+		}
+		next();
+	}
 }));
 
 Site.schema.methods.loadEnvVariables = function () {

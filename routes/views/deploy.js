@@ -7,7 +7,7 @@ var async = asyncawait.async;
 var await = asyncawait.await;
 
 exports = module.exports = function (req, res) {
-	var onSuccess = async(function (user) {
+	var onLogin = async(function (user) {
 		if (!user.canDeploy) {
 			addInfo('User not authorised to deploy new app versions', res);
 			return finish(false, res);
@@ -96,7 +96,7 @@ exports = module.exports = function (req, res) {
 		}
 	});
 
-	var onFail = function (err) {
+	var onLoginFail = function (err) {
 		var message = (err && err.message) ? err.message : 'Sorry, that email and/or password are not valid.';
 		addInfo('Failed to log in:', res);
 		addInfo(message, res);
@@ -104,11 +104,11 @@ exports = module.exports = function (req, res) {
 	};
 
 	if (req.user && req.user.canDeploy) {
-		onSuccess(req.user);
+		onLogin(req.user);
 	} else if (req.body.email && req.body.password) {
-		session.signin(req.body, req, res, onSuccess, onFail);
+		session.signin(req.body, req, res, onLogin, onLoginFail);
 	} else {
-		onFail(new Error('You must be logged in, or provide email and password credentials in your request, to deploy things'));
+		onLoginFail(new Error('You must be logged in, or provide email and password credentials in your request, to deploy things'));
 	}
 };
 
