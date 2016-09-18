@@ -61,7 +61,6 @@ Deployment.schema.methods.removeDeploy = async(function (outStream) {
 });
 
 Deployment.schema.methods.writeEnv = async(function (outStream) {
-	console.log(this);
 	await(this.loadSiteAndServer());
 	await(this.site.loadEnvVariables());
 	var command = './write-remote-file';
