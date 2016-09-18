@@ -53,26 +53,17 @@ Site.schema.pre('remove', async(function (next) {
 Site.schema.pre('save', async(function (next) {
 	if(this.isModified('port') || this.isModified('environmentVariables') || this.isModified('cookieSecret')) {
 		console.log('updating .env');
-		console.log(this);
 		// We want to update our deployments' .env files
-		let outStream = new stream.Writable({
-			write: function(chunk, encoding, next) {
-				console.log(chunk.toString());
-				next();
-			}
-		});
 		let deployments = await(Deployment.model.find().where('site', this).populate('server').exec());
 		for (let deployment of deployments) {
 			deployment.site = this;
-			console.log(deployment);
-			deployment.populated('site', this);
 			console.log('writing file');
-			await(deployment.writeEnv(outStream));
+			await(deployment.writeEnv(process.stdout));
 			console.log('restarting server');
-			await(deployment.restart(outStream));
+			await(deployment.restart(process.stdout));
 		}
-		next();
 	}
+    next();
 }));
 
 Site.schema.methods.loadEnvVariables = function () {
@@ -80,7 +71,7 @@ Site.schema.methods.loadEnvVariables = function () {
 		return Promise.resolve(this);
 	}
 
-	return this.populateAsync('environmentVariables');
+	return this.populate('environmentVariables').execPopulate();
 };
 
 /**

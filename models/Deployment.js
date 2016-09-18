@@ -43,7 +43,7 @@ Deployment.schema.methods.loadSiteAndServer = function () {
 		return Promise.resolve(this);
 	}
 
-	return this.populateAsync('site server');
+	return this.populate('site server').execPopulate();
 };
 
 Deployment.schema.methods.initDeploy = async(function (outStream) {

@@ -40,6 +40,4 @@ if (keystone.get('env') === 'production') {
 	keystone.set('session store', 'connect-mongo');
 }
 
-mongoose.Document.prototype.populateAsync = Promise.promisify(mongoose.Document.prototype.populate);
-
 keystone.start();
