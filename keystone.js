@@ -4,8 +4,6 @@ require('dotenv').config();
 
 // Require keystone
 var keystone = require('keystone');
-var mongoose = require('mongoose');
-var Promise = require('bluebird');
 
 keystone.init({
 	'name': 'Deployment Server',

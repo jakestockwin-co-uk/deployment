@@ -126,7 +126,7 @@ Deployment.schema.methods.restart = async(function (outStream) {
 		throw new Error(err);
 	}
 	return 0;
-})
+});
 
 /**
  * Registration
