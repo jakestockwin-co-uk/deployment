@@ -19,9 +19,7 @@ keystone.init({
 	'session': true,
 	'auth': true,
 	'user model': 'User',
-	'model prefix': 'deployment',
-
-	'mongo options': { server: { keepAlive: 1 } },
+	'model prefix': 'deployment'
 });
 keystone.import('models');
 keystone.set('locals', {
